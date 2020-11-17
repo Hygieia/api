@@ -35,7 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 public class DashboardRemoteServiceImpl implements DashboardRemoteService {
@@ -153,18 +153,7 @@ public class DashboardRemoteServiceImpl implements DashboardRemoteService {
             WidgetRequest widgetRequest = allWidgetRequests.get(key);
 
             component = dashboardService.associateCollectorToComponent(dashboard.getApplication().getComponents().get(0).getId(), widgetRequest.getCollectorItemIds(),component,true);
-            Widget newWidget = widgetRequest.widget();
-            if (isUpdate) {
-                Widget oldWidget = existingWidgets.get(newWidget.getName());
-                if (oldWidget == null) {
-                    dashboardService.addWidget(dashboard, newWidget);
-                } else {
-                    Widget widget = widgetRequest.updateWidget(dashboardService.getWidget(dashboard, oldWidget.getId()));
-                    dashboardService.updateWidget(dashboard, widget);
-                }
-            } else {
-                dashboardService.addWidget(dashboard, newWidget);
-            }
+            addOrUpdateWidgets(dashboard, widgetRequest, existingWidgets);
         }
 
         // Delete collector item types that are not in the incoming types
@@ -196,6 +185,17 @@ public class DashboardRemoteServiceImpl implements DashboardRemoteService {
 
         componentRepository.save(component);
         return (dashboard != null) ? dashboardService.get(dashboard.getId()) : null;
+    }
+
+    protected void addOrUpdateWidgets(Dashboard dashboard, WidgetRequest widgetRequest, Map<String, Widget> existingWidgets) {
+        Widget newWidget = widgetRequest.widget();
+        Widget oldWidget = existingWidgets.get(newWidget.getName());
+        if (Objects.isNull(oldWidget)) {
+            dashboardService.addWidget(dashboard, newWidget);
+        } else {
+            Widget widget = widgetRequest.updateWidget(dashboardService.getWidget(dashboard, oldWidget.getId()));
+            dashboardService.updateWidget(dashboard, widget);
+        }
     }
 
     private Dashboard chooseDashboard(List<Dashboard> dashboards, DashboardRemoteRequest request) {

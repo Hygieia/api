@@ -243,6 +243,8 @@ public interface DashboardService {
     Dashboard updateScoreSettings(ObjectId dashboardId, boolean scoreEnabled, ScoreDisplayType scoreDisplay);
 
     Iterable<Dashboard> allTemplate(String template);
+
+    void cleanupDashboardWidgets(boolean isSave) throws HygieiaException;
 }
 
 

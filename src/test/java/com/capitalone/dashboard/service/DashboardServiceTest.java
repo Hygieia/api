@@ -941,6 +941,19 @@ public class DashboardServiceTest {
         Assert.assertTrue(result);
     }
 
+    @Test
+    public void testDashboardWidgetsCleanup() throws HygieiaException {
+        Dashboard dashboard = makeTeamDashboard("template", "title", "AppName", "",configItemBusServName,configItemBusAppName,"comp1");
+        Widget widget1 = makeWidget(ObjectId.get(), "build");
+        Widget widget2 = makeWidget(ObjectId.get(), "repo");
+        Widget widget3 = makeWidget(ObjectId.get(), "build");
+        List<Widget> widgets = Lists.newArrayList(widget1, widget2, widget3);
+        dashboard.setWidgets(widgets);
+        when(dashboardRepository.findAllByType(DashboardType.Team)).thenReturn(Arrays.asList(dashboard));
+        when(dashboardRepository.save(dashboard)).thenReturn(dashboard);
+        dashboardService.cleanupDashboardWidgets(true);
+    }
+
     private Dashboard makeTeamDashboard(String template, String title, String appName, String owner,String configItemBusServName,String configItemBusAppName, String... compNames) {
         Application app = new Application(appName);
         for (String compName : compNames) {

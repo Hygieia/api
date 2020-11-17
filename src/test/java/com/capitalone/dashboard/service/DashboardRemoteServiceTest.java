@@ -8,6 +8,8 @@ import com.capitalone.dashboard.model.Component;
 import com.capitalone.dashboard.model.CollectorType;
 import com.capitalone.dashboard.model.Owner;
 import com.capitalone.dashboard.model.AuthType;
+import com.capitalone.dashboard.model.Widget;
+import com.capitalone.dashboard.request.WidgetRequest;
 import com.capitalone.dashboard.repository.CollectorItemRepository;
 import com.capitalone.dashboard.repository.DashboardRepository;
 import com.capitalone.dashboard.repository.UserInfoRepository;
@@ -21,6 +23,8 @@ import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.IOUtils;
+import org.assertj.core.util.Lists;
+import org.bson.types.ObjectId;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -349,6 +353,30 @@ public class DashboardRemoteServiceTest {
         assertNull(component.getCollectorItems().get(CollectorType.Test));
         assertNull(component.getCollectorItems().get(CollectorType.StaticSecurityScan));
 
+    }
+
+    @Test public void testCreateOrUpdateWidgets() {
+        List<Dashboard> dashboards = dashboardRepository.findByTitle("TestSSA");
+        Dashboard dashboard = dashboards.get(0);
+        Widget widget = new Widget();
+        widget.setName("repo");
+        widget.setId(ObjectId.get());
+        dashboard.setWidgets(Lists.newArrayList(widget));
+        WidgetRequest widgetRequest = new WidgetRequest();
+        widgetRequest.setName("repo");
+        Map<String, Widget> existingWidgets = new HashMap();
+        existingWidgets.put("repo", widget);
+        DashboardRemoteServiceImpl dashboardRemoteServiceImpl = new DashboardRemoteServiceImpl(
+                null,null, dashboardRepository, dashboardService,
+                null,null,null,null,null);
+        dashboardRemoteServiceImpl.addOrUpdateWidgets(dashboard, widgetRequest,  existingWidgets);
+        List<Widget> uWidgets = dashboardService.getByTitle("TestSSA").get(0).getWidgets();
+        assertEquals(1, uWidgets.size());
+        assertEquals("repo", uWidgets.get(0).getName());
+        widgetRequest.setName("build");
+        dashboardRemoteServiceImpl.addOrUpdateWidgets(dashboard, widgetRequest,  existingWidgets);
+        uWidgets = dashboardService.getByTitle("TestSSA").get(0).getWidgets();
+        assertEquals(2, uWidgets.size());
     }
 
     private String getExpectedJSON(String path) throws IOException {
