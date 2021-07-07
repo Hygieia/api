@@ -81,7 +81,7 @@
         <!-- Plugins -->
         <apache.rat.plugin.version>0.13</apache.rat.plugin.version>
         <coveralls.maven.plugin.version>4.3.0</coveralls.maven.plugin.version>
-        <jacoco.maven.plugin.version>0.8.3</jacoco.maven.plugin.version>
+        <jacoco.maven.plugin.version>0.8.6</jacoco.maven.plugin.version>
         <jacoco.coverage.percentage.minimum>0.200</jacoco.coverage.percentage.minimum>
         <jacoco.classes.missed.minimum>300</jacoco.classes.missed.minimum>
         <java.compilation.source>1.8</java.compilation.source>
