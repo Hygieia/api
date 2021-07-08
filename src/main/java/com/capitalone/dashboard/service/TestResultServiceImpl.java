@@ -31,20 +31,32 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Service
 public class TestResultServiceImpl implements TestResultService {
@@ -57,6 +69,7 @@ public class TestResultServiceImpl implements TestResultService {
     private final CollectorService collectorService;
     private final CmdbService cmdbService;
     private final ApiSettings apiSettings;
+    private  Path fileStorageLocation;
 
     private static final Logger LOGGER = Logger.getLogger(ApiTokenServiceImpl.class);
 
@@ -743,5 +756,109 @@ public class TestResultServiceImpl implements TestResultService {
 
         return time;
     }
+
+
+    private void  getLocation(){
+        this.fileStorageLocation = Paths.get(apiSettings.getHygieiafile())
+                .toAbsolutePath().normalize();
+        if(!Files.isDirectory(this.fileStorageLocation)){
+            try {
+                Files.createDirectories(this.fileStorageLocation);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+
+    public String storeFile(MultipartFile file) throws HygieiaException {
+        getLocation();
+        String fileName = org.springframework.util.StringUtils.cleanPath(file.getOriginalFilename());
+        try {
+            Path targetLocation = this.fileStorageLocation.resolve(fileName);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            String unzipFloderName = fileName.substring(0,fileName.lastIndexOf("."));
+            Path unzipLocation = this.fileStorageLocation.resolve(unzipFloderName);
+            this.unzipFolder(targetLocation,unzipLocation);
+            Files.deleteIfExists(Paths.get(targetLocation.toString()));
+            return unzipLocation.toString();
+        } catch (IOException ex) {
+            throw new HygieiaException("Error on file unzipping : "+ ex.getMessage(), HygieiaException.BAD_DATA);
+        }
+    }
+
+
+    private   void unzipFolder(Path source, Path target) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(source.toFile()))) {
+            ZipEntry zipEntry = zis.getNextEntry();
+            while (zipEntry != null) {
+                boolean isDirectory = false;
+                if (zipEntry.getName().endsWith(File.separator)) {
+                    isDirectory = true;
+                }
+                Path newPath = zipSlipProtect(zipEntry, target);
+                if (isDirectory) {
+                    Files.createDirectories(newPath);
+                } else {
+
+                    if (newPath.getParent() != null) {
+                        if (Files.notExists(newPath.getParent())) {
+                            Files.createDirectories(newPath.getParent());
+                        }
+                    }
+                    Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+
+                zipEntry = zis.getNextEntry();
+
+            }
+            zis.closeEntry();
+        }
+    }
+
+    private   Path zipSlipProtect(ZipEntry zipEntry, Path targetDir)
+            throws IOException {
+        Path targetDirResolved = targetDir.resolve(zipEntry.getName());
+        Path normalizePath = targetDirResolved.normalize();
+        if (!normalizePath.startsWith(targetDir)) {
+            throw new IOException("Bad zip entry: " + zipEntry.getName());
+        }
+        return normalizePath;
+    }
+
+    public <T> T fileRedear(File file, Class<T> type ) throws HygieiaException{
+        String data = "";
+        try {
+            data = new String(Files.readAllBytes(Paths.get(file.getPath())));
+        } catch (IOException e) {
+            throw new HygieiaException("Error in file reading : " + e.getMessage(), HygieiaException.BAD_DATA);
+        }
+        Gson gson = new Gson();
+        return gson.fromJson(data , type);
+    }
+
+
+    public void deleteDirectory(String dir) throws HygieiaException {
+
+        Path path = Paths.get(dir);
+        try (Stream<Path> walk = Files.walk(path)) {
+            walk
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(TestResultServiceImpl::deleteDirectoryExtract);
+        }
+        catch (IOException ex){
+            throw new HygieiaException("Error while deleting folder : "+ ex.getMessage(),HygieiaException.BAD_DATA);
+        }
+
+    }
+
+    private static void deleteDirectoryExtract(Path path) {
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+            System.err.printf("Unable to delete this path : %s%n%s", path, e);
+        }
+    }
+
 
 }

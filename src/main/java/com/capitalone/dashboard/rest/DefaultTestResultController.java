@@ -21,10 +21,14 @@ import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+
+import java.io.File;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
@@ -113,5 +117,27 @@ public class DefaultTestResultController {
                 .status(httpStatus)
                 .body(response);
     }
+
+
+    @RequestMapping(value = "/quality/test-result/import", method = POST)
+    public ResponseEntity<String> uploadZIPFile(@RequestParam("file") MultipartFile file) throws HygieiaException {
+
+        String filePath = testResultService.storeFile(file);
+        StringBuilder res = new StringBuilder();
+        if(filePath != null) {
+            File directoryPath = new File(filePath);
+            File filesList[] = directoryPath.listFiles();
+            for (File fileRedr : filesList) {
+                TestCreateRequest request = testResultService.fileRedear(fileRedr, TestCreateRequest.class );
+                String response = testResultService.createTest(request);
+                res.append(response);
+            }
+            testResultService.deleteDirectory(filePath);
+        }
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(res.toString());
+    }
+
 
 }

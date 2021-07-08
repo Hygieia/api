@@ -59,6 +59,16 @@ public class ApiSettings {
 
     private String hygieia_ui_url="";
 
+    private String hygieiafile;
+
+    public String getHygieiafile() {
+        return hygieiafile;
+    }
+
+    public void setHygieiafile(String hygieiafile) {
+        this.hygieiafile = hygieiafile;
+    }
+
     public Map<String, String> getFunctional() {
         return functional;
     }
